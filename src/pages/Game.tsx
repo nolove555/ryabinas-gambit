@@ -1,8 +1,9 @@
 import { useParams } from "react-router-dom";
-import { games } from "../data/games";
+import { useGames } from "../context/GameContext";
 import ChessGame from "../components/chess/ChessGame";
 
 function Game() {
+  const { games } = useGames();
   const { gameId } = useParams();
 
   const game = games.find(

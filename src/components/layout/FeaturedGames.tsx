@@ -1,9 +1,10 @@
 import { useNavigate } from "react-router-dom";
 import GameCard from "./GameCard";
-import { games } from "../../data/games";
+import { useGames } from "../../context/GameContext";
 
 function FeaturedGames() {
   const navigate = useNavigate();
+  const { games } = useGames();
 
   return (
     <section className="border-t border-[#2b2117] px-10 py-8">

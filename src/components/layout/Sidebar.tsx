@@ -5,21 +5,10 @@ import {
   User,
   Settings,
 } from "lucide-react";
-import { NavLink } from "react-router-dom";
 
-const grandmasters = [
-  { name: "Mikhail Tal", games: 122 },
-  { name: "José Capablanca", games: 85 },
-  { name: "Bobby Fischer", games: 67 },
-  { name: "Anatoly Karpov", games: 95 },
-  { name: "Magnus Carlsen", games: 210 },
-  { name: "Daniel Naroditsky", games: 74 },
-  { name: "Hikaru Nakamura", games: 88 },
-  { name: "Boris Spassky", games: 56 },
-  { name: "Daniil Dubov", games: 62 },
-  { name: "Judit Polgar", games: 91 },
-  { name: "Garry Kasparov", games: 143 },
-];
+import { NavLink, Link } from "react-router-dom";
+
+import { players } from "../../data/players";
 
 function Sidebar() {
   return (
@@ -27,8 +16,15 @@ function Sidebar() {
 
       <div className="flex h-full flex-col px-6 py-8">
 
-        {/* LOGO */}
-        <div className="shrink-0 border-b border-[#2c2116] pb-6">
+        {/* ==================================================
+            LOGO
+            ================================================== */}
+
+        <Link
+          to="/"
+          className="shrink-0 border-b border-[#2c2116] pb-6"
+        >
+
           <h1 className="font-serif text-3xl tracking-wide text-[#d8c7a5]">
             RYABINA'S
           </h1>
@@ -42,24 +38,30 @@ function Sidebar() {
             <br />
             AI's Ridiculous Analysis Second.
           </p>
-        </div>
+
+        </Link>
 
 
-        {/* GRANDMASTERS */}
+        {/* ==================================================
+            GRANDMASTERS
+            ================================================== */}
+
         <div className="flex min-h-0 flex-1 flex-col py-8">
 
           <p className="mb-4 shrink-0 font-serif text-[10px] tracking-[0.2em] text-[#806c4e]">
             GRANDMASTERS
           </p>
 
-          {/* ONLY THIS AREA SCROLLS */}
+
           <div className="min-h-0 flex-1 overflow-y-auto pr-2">
 
             <div className="space-y-1">
 
-              {grandmasters.map((player) => (
-                <div
-                  key={player.name}
+              {players.map((player) => (
+
+                <Link
+                  key={player.id}
+                  to={`/players/${player.id}`}
                   className="flex items-center justify-between rounded-lg px-3 py-2 transition-colors hover:bg-[#17130f]"
                 >
 
@@ -69,7 +71,9 @@ function Sidebar() {
                       ♟
                     </div>
 
+
                     <div>
+
                       <p className="font-serif text-sm text-[#d4c4a6]">
                         {player.name}
                       </p>
@@ -77,24 +81,31 @@ function Sidebar() {
                       <p className="text-[11px] text-[#766b5a]">
                         Games
                       </p>
+
                     </div>
 
                   </div>
+
 
                   <span className="font-serif text-sm text-[#b73527]">
                     {player.games}
                   </span>
 
-                </div>
+                </Link>
+
               ))}
 
             </div>
 
           </div>
+
         </div>
 
 
-        {/* BOTTOM NAVIGATION */}
+        {/* ==================================================
+            BOTTOM NAVIGATION
+            ================================================== */}
+
         <nav className="shrink-0 border-t border-[#2c2116] pt-4">
 
           <NavItem
@@ -130,6 +141,7 @@ function Sidebar() {
         </nav>
 
       </div>
+
     </aside>
   );
 }
@@ -142,7 +154,12 @@ type NavItemProps = {
 };
 
 
-function NavItem({ to, icon, label }: NavItemProps) {
+function NavItem({
+  to,
+  icon,
+  label,
+}: NavItemProps) {
+
   return (
     <NavLink
       to={to}
@@ -154,8 +171,11 @@ function NavItem({ to, icon, label }: NavItemProps) {
         }`
       }
     >
+
       {icon}
+
       <span>{label}</span>
+
     </NavLink>
   );
 }
