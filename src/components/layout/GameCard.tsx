@@ -1,26 +1,32 @@
-import type { Game } from "../../data/games";
-import { Link } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
+import type { GameData } from "../../data/games";
 
 type GameCardProps = {
-  game: Game;
+  game: GameData;
 };
 
 function GameCard({ game }: GameCardProps) {
+  const navigate = useNavigate();
+
   return (
-    <Link
-      to={`/games/${game.id}`}
-      className="group block overflow-hidden rounded-xl border border-[#49351f] bg-[#0c0e0d] transition-all duration-300 hover:-translate-y-1 hover:border-[#8a5d2a]"
+    <article
+      onClick={() => navigate(`/games/${game.id}`)}
+      className="cursor-pointer overflow-hidden rounded-xl border border-[#49351f] bg-[#0c0e0d] transition-transform duration-200 hover:-translate-y-1 hover:border-[#76542b]"
     >
-      {/* Image */}
-      <div className="flex h-40 items-center justify-center overflow-hidden bg-[#181611]">
-        <img
-          src="/images/chess-image.png"
-          alt={game.players}
-          className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
-        />
+
+      {/* Temporary image */}
+
+      <div className="flex h-40 items-center justify-center bg-[#181611]">
+
+        <span className="font-serif text-5xl text-[#705c3b]">
+          ♟
+        </span>
+
       </div>
 
-      {/* Information */}
+
+      {/* Game information */}
+
       <div className="p-4">
 
         <h3 className="font-serif text-base text-[#d4c4a6]">
@@ -38,13 +44,14 @@ function GameCard({ game }: GameCardProps) {
           </span>
 
           <span className="text-sm text-[#c08b3c]">
-            ★ {game.rating.toFixed(1)}
+            ★ {game.rating}
           </span>
 
         </div>
 
       </div>
-    </Link>
+
+    </article>
   );
 }
 

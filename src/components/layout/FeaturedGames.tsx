@@ -1,7 +1,10 @@
+import { useNavigate } from "react-router-dom";
 import GameCard from "./GameCard";
 import { games } from "../../data/games";
 
 function FeaturedGames() {
+  const navigate = useNavigate();
+
   return (
     <section className="border-t border-[#2b2117] px-10 py-8">
 
@@ -11,7 +14,10 @@ function FeaturedGames() {
           ✦ FEATURED GAMES
         </h2>
 
-        <button className="font-serif text-sm text-[#9f8250]">
+        <button
+          onClick={() => navigate("/games")}
+          className="font-serif text-sm text-[#9f8250] hover:text-[#d4c4a6]"
+        >
           View all →
         </button>
 
