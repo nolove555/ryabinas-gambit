@@ -1,37 +1,5 @@
 import GameCard from "./GameCard";
-
-const games = [
-  {
-    players: "Tal vs Petrosian",
-    event: "1960 Candidates",
-    category: "Brilliant Attack",
-    rating: "4.9",
-  },
-  {
-    players: "Kasparov vs Topalov",
-    event: "Wijk aan Zee 1999",
-    category: "Deep Preparation",
-    rating: "4.8",
-  },
-  {
-    players: "Carlsen vs Anand",
-    event: "World Championship 2014",
-    category: "Endgame Mastery",
-    rating: "4.9",
-  },
-  {
-    players: "Fischer vs Spassky",
-    event: "Reykjavik 1972",
-    category: "The Match of the Century",
-    rating: "5.0",
-  },
-  {
-    players: "Karpov vs Kasparov",
-    event: "Moscow 1985",
-    category: "World Championship",
-    rating: "4.8",
-  },
-];
+import { games } from "../../data/games";
 
 function FeaturedGames() {
   return (
@@ -53,8 +21,8 @@ function FeaturedGames() {
 
         {games.map((game) => (
           <GameCard
-            key={game.players}
-            {...game}
+            key={game.id}
+            game={game}
           />
         ))}
 
