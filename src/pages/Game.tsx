@@ -1,5 +1,6 @@
 import { Link, useParams } from "react-router-dom";
 import { games } from "../data/games";
+import ChessGame from "../components/chess/ChessGame";
 
 function Game() {
   const { gameId } = useParams();
@@ -69,15 +70,9 @@ function Game() {
         {/* Chess board placeholder */}
         <section className="rounded-xl border border-[#49351f] bg-[#0c0e0d] p-5">
 
-          <div className="aspect-square w-full overflow-hidden rounded-lg">
-            <img
-              src="/images/chess-image.png"
-              alt={`${game.players} chess game`}
-              className="h-full w-full object-cover"
-            />
-          </div>
+            <ChessGame />
 
-        </section>
+            </section>
 
         {/* Analysis */}
         <section className="rounded-xl border border-[#49351f] bg-[#0c0e0d] p-6">
