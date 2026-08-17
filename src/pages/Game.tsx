@@ -54,12 +54,13 @@ function Game() {
 
       </section>
 
-
       {/* CHESS WORKSPACE */}
 
       <section className="rounded-xl border border-[#352819] bg-[#080a09] p-6">
 
-        <ChessGame />
+        <ChessGame
+          pgn={game.pgn}
+        />
 
       </section>
 

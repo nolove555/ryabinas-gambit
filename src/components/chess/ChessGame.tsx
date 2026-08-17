@@ -7,18 +7,83 @@ type MoveRecord = {
   fen: string;
 };
 
-function ChessGame() {
+type ChessGameProps = {
+  pgn: string;
+};
+
+function ChessGame({ pgn }: ChessGameProps) {
   const [game, setGame] = useState(new Chess());
 
   const [moves, setMoves] = useState<MoveRecord[]>([]);
 
-  const [currentMoveIndex, setCurrentMoveIndex] = useState(-1);
+  const [currentMoveIndex, setCurrentMoveIndex] =
+    useState(-1);
 
-  const [analysis, setAnalysis] = useState<Record<number, string>>({});
+  const [analysis, setAnalysis] =
+    useState<Record<number, string>>({});
 
-  const [editingAnalysis, setEditingAnalysis] = useState(false);
+  const [editingAnalysis, setEditingAnalysis] =
+    useState(false);
 
-  const [analysisDraft, setAnalysisDraft] = useState("");
+  const [analysisDraft, setAnalysisDraft] =
+    useState("");
+
+  /*
+   * --------------------------------------------------
+   * LOAD PGN
+   * --------------------------------------------------
+   */
+
+  useEffect(() => {
+    const loadedGame = new Chess();
+
+    try {
+      loadedGame.loadPgn(pgn);
+
+      const history = loadedGame.history();
+
+      const replayGame = new Chess();
+
+      const loadedMoves: MoveRecord[] = [];
+
+      history.forEach((san) => {
+        const move = replayGame.move(san);
+
+        loadedMoves.push({
+          san: move.san,
+          fen: replayGame.fen(),
+        });
+      });
+
+      setMoves(loadedMoves);
+
+      /*
+       * Start at the initial position.
+       */
+
+      setGame(new Chess());
+
+      setCurrentMoveIndex(-1);
+
+      setAnalysis({});
+
+      setAnalysisDraft("");
+
+      setEditingAnalysis(false);
+
+    } catch (error) {
+      console.error(
+        "Failed to load PGN:",
+        error
+      );
+
+      setMoves([]);
+
+      setGame(new Chess());
+
+      setCurrentMoveIndex(-1);
+    }
+  }, [pgn]);
 
   /*
    * --------------------------------------------------
@@ -59,6 +124,7 @@ function ChessGame() {
        * If we're viewing an older move and make
        * a new move, discard everything after it.
        */
+
       const newMoves = [
         ...moves.slice(0, currentMoveIndex + 1),
         newMove,
@@ -66,19 +132,23 @@ function ChessGame() {
 
       setMoves(newMoves);
 
-      const newIndex = newMoves.length - 1;
+      const newIndex =
+        newMoves.length - 1;
 
       setCurrentMoveIndex(newIndex);
 
       setGame(gameCopy);
 
       /*
-       * A newly created move starts with no analysis.
+       * New move starts with empty analysis.
        */
+
       setEditingAnalysis(true);
+
       setAnalysisDraft("");
 
       return true;
+
     } catch {
       console.log("Illegal move");
 
@@ -88,33 +158,37 @@ function ChessGame() {
 
   /*
    * --------------------------------------------------
-   * CLICK A MOVE
+   * SELECT A MOVE
    * --------------------------------------------------
    */
 
-  const handleMoveClick = (index: number) => {
-    const selectedMove = moves[index];
+  const handleMoveClick = (
+    index: number
+  ) => {
+    const selectedMove =
+      moves[index];
 
     if (!selectedMove) {
       return;
     }
 
-    const position = new Chess(selectedMove.fen);
+    const position =
+      new Chess(selectedMove.fen);
 
     setGame(position);
 
     setCurrentMoveIndex(index);
 
-    /*
-     * Load the saved analysis for this move.
-     */
-    setAnalysisDraft(analysis[index] ?? "");
+    const savedAnalysis =
+      analysis[index];
 
-    /*
-     * If analysis exists, show it.
-     * If it doesn't, allow the user to start writing.
-     */
-    setEditingAnalysis(!analysis[index]);
+    setAnalysisDraft(
+      savedAnalysis ?? ""
+    );
+
+    setEditingAnalysis(
+      !savedAnalysis
+    );
   };
 
   /*
@@ -130,7 +204,8 @@ function ChessGame() {
 
     setAnalysis((previous) => ({
       ...previous,
-      [currentMoveIndex]: analysisDraft,
+      [currentMoveIndex]:
+        analysisDraft,
     }));
 
     setEditingAnalysis(false);
@@ -147,7 +222,9 @@ function ChessGame() {
       return;
     }
 
-    setAnalysisDraft(analysis[currentMoveIndex] ?? "");
+    setAnalysisDraft(
+      analysis[currentMoveIndex] ?? ""
+    );
 
     setEditingAnalysis(true);
   };
@@ -164,7 +241,9 @@ function ChessGame() {
     }
 
     setAnalysis((previous) => {
-      const updated = { ...previous };
+      const updated = {
+        ...previous,
+      };
 
       delete updated[currentMoveIndex];
 
@@ -178,7 +257,7 @@ function ChessGame() {
 
   /*
    * --------------------------------------------------
-   * KEYBOARD NAVIGATION
+   * ENTER TO SAVE
    * --------------------------------------------------
    */
 
@@ -186,36 +265,47 @@ function ChessGame() {
     event: React.KeyboardEvent<HTMLTextAreaElement>
   ) => {
     /*
-     * Enter = save analysis
+     * Enter = save.
      *
-     * Shift + Enter = normal newline
+     * Shift + Enter = newline.
      */
-    if (event.key === "Enter" && !event.shiftKey) {
+
+    if (
+      event.key === "Enter" &&
+      !event.shiftKey
+    ) {
       event.preventDefault();
 
       handleSaveAnalysis();
 
       /*
-       * Remove focus immediately so the arrow keys
-       * can control move navigation.
+       * Remove focus immediately.
+       *
+       * This means the arrow keys can
+       * immediately navigate the game.
        */
+
       event.currentTarget.blur();
     }
   };
 
   /*
-   * Global keyboard navigation.
-   *
-   * Left arrow  = previous move
-   * Right arrow = next move
+   * --------------------------------------------------
+   * KEYBOARD NAVIGATION
+   * --------------------------------------------------
    */
+
   useEffect(() => {
-    const handleKeyDown = (event: KeyboardEvent) => {
+    const handleKeyDown = (
+      event: KeyboardEvent
+    ) => {
+      const target =
+        event.target as HTMLElement | null;
+
       /*
-       * Don't hijack keyboard arrows while the user
-       * is typing into an input or textarea.
+       * Never hijack keyboard arrows
+       * while typing.
        */
-      const target = event.target as HTMLElement | null;
 
       if (
         target?.tagName === "INPUT" ||
@@ -231,29 +321,43 @@ function ChessGame() {
       /*
        * LEFT ARROW
        */
-      if (event.key === "ArrowLeft") {
+
+      if (
+        event.key === "ArrowLeft"
+      ) {
         event.preventDefault();
 
-        const previousIndex = currentMoveIndex - 1;
+        const previousIndex =
+          currentMoveIndex - 1;
 
         if (previousIndex >= 0) {
-          const previousMove = moves[previousIndex];
+          const previousMove =
+            moves[previousIndex];
 
-          setGame(new Chess(previousMove.fen));
+          setGame(
+            new Chess(previousMove.fen)
+          );
 
-          setCurrentMoveIndex(previousIndex);
+          setCurrentMoveIndex(
+            previousIndex
+          );
+
+          const savedAnalysis =
+            analysis[previousIndex];
 
           setAnalysisDraft(
-            analysis[previousIndex] ?? ""
+            savedAnalysis ?? ""
           );
 
           setEditingAnalysis(
-            !analysis[previousIndex]
+            !savedAnalysis
           );
+
         } else {
           /*
-           * Go back to starting position.
+           * Return to starting position.
            */
+
           setGame(new Chess());
 
           setCurrentMoveIndex(-1);
@@ -267,30 +371,47 @@ function ChessGame() {
       /*
        * RIGHT ARROW
        */
-      if (event.key === "ArrowRight") {
+
+      if (
+        event.key === "ArrowRight"
+      ) {
         event.preventDefault();
 
-        const nextIndex = currentMoveIndex + 1;
+        const nextIndex =
+          currentMoveIndex + 1;
 
-        if (nextIndex < moves.length) {
-          const nextMove = moves[nextIndex];
+        if (
+          nextIndex < moves.length
+        ) {
+          const nextMove =
+            moves[nextIndex];
 
-          setGame(new Chess(nextMove.fen));
+          setGame(
+            new Chess(nextMove.fen)
+          );
 
-          setCurrentMoveIndex(nextIndex);
+          setCurrentMoveIndex(
+            nextIndex
+          );
+
+          const savedAnalysis =
+            analysis[nextIndex];
 
           setAnalysisDraft(
-            analysis[nextIndex] ?? ""
+            savedAnalysis ?? ""
           );
 
           setEditingAnalysis(
-            !analysis[nextIndex]
+            !savedAnalysis
           );
         }
       }
     };
 
-    window.addEventListener("keydown", handleKeyDown);
+    window.addEventListener(
+      "keydown",
+      handleKeyDown
+    );
 
     return () => {
       window.removeEventListener(
@@ -298,7 +419,11 @@ function ChessGame() {
         handleKeyDown
       );
     };
-  }, [moves, currentMoveIndex, analysis]);
+  }, [
+    moves,
+    currentMoveIndex,
+    analysis,
+  ]);
 
   /*
    * --------------------------------------------------
@@ -306,8 +431,12 @@ function ChessGame() {
    * --------------------------------------------------
    */
 
-  const getMoveNumber = (index: number) => {
-    return Math.floor(index / 2) + 1;
+  const getMoveNumber = (
+    index: number
+  ) => {
+    return (
+      Math.floor(index / 2) + 1
+    );
   };
 
   /*
@@ -335,35 +464,41 @@ function ChessGame() {
   return (
     <div className="grid items-start grid-cols-[minmax(0,1fr)_380px] gap-8">
 
-      {/* ================================
+      {/* ==================================================
           CHESSBOARD
-          ================================= */}
+          ================================================== */}
 
       <div className="flex items-start justify-center">
+
         <div className="aspect-square w-full max-w-[700px]">
+
           <Chessboard
             options={{
               position: game.fen(),
 
-              onPieceDrop: handlePieceDrop,
+              onPieceDrop:
+                handlePieceDrop,
 
               boardStyle: {
                 borderRadius: "8px",
               },
             }}
           />
+
         </div>
+
       </div>
 
-      {/* ================================
+
+      {/* ==================================================
           RIGHT SIDE
-          ================================= */}
+          ================================================== */}
 
       <div className="flex flex-col gap-6">
 
-        {/* ================================
+        {/* ==================================================
             MOVE LIST
-            ================================= */}
+            ================================================== */}
 
         <section className="rounded-xl border border-[#352819] bg-[#0c0e0d] p-5">
 
@@ -375,18 +510,21 @@ function ChessGame() {
 
             {moves.length === 0 ? (
               <p className="text-sm text-[#786d5b]">
-                No moves yet.
+                No moves loaded.
               </p>
             ) : (
+
               <div className="space-y-1">
 
                 {Array.from(
                   {
-                    length: Math.ceil(
-                      moves.length / 2
-                    ),
+                    length:
+                      Math.ceil(
+                        moves.length / 2
+                      ),
                   },
                   (_, moveNumber) => {
+
                     const whiteIndex =
                       moveNumber * 2;
 
@@ -405,9 +543,13 @@ function ChessGame() {
                           {moveNumber + 1}.
                         </span>
 
-                        {/* WHITE MOVE */}
 
-                        {moves[whiteIndex] && (
+                        {/* WHITE */}
+
+                        {moves[
+                          whiteIndex
+                        ] && (
+
                           <button
                             onClick={() =>
                               handleMoveClick(
@@ -421,13 +563,22 @@ function ChessGame() {
                                 : "text-[#d4c4a6] hover:bg-[#17130f]"
                             }`}
                           >
-                            {moves[whiteIndex].san}
+                            {
+                              moves[
+                                whiteIndex
+                              ].san
+                            }
                           </button>
+
                         )}
 
-                        {/* BLACK MOVE */}
 
-                        {moves[blackIndex] && (
+                        {/* BLACK */}
+
+                        {moves[
+                          blackIndex
+                        ] && (
+
                           <button
                             onClick={() =>
                               handleMoveClick(
@@ -441,8 +592,13 @@ function ChessGame() {
                                 : "text-[#d4c4a6] hover:bg-[#17130f]"
                             }`}
                           >
-                            {moves[blackIndex].san}
+                            {
+                              moves[
+                                blackIndex
+                              ].san
+                            }
                           </button>
+
                         )}
 
                       </div>
@@ -451,15 +607,17 @@ function ChessGame() {
                 )}
 
               </div>
+
             )}
 
           </div>
 
         </section>
 
-        {/* ================================
+
+        {/* ==================================================
             ANALYSIS
-            ================================= */}
+            ================================================== */}
 
         <section className="rounded-xl border border-[#352819] bg-[#0c0e0d] p-5">
 
@@ -473,122 +631,141 @@ function ChessGame() {
               ? `${getMoveNumber(
                   currentMoveIndex
                 )}${
-                  currentMoveIndex % 2 === 0
+                  currentMoveIndex %
+                    2 ===
+                  0
                     ? "."
                     : "..."
-                } ${currentMove.san}`
+                } ${
+                  currentMove.san
+                }`
               : "Starting position"}
 
           </h2>
 
-          {/* ================================
-              NO MOVE SELECTED
-              ================================= */}
 
-          {currentMoveIndex === -1 && (
+          {/* ==================================================
+              STARTING POSITION
+              ================================================== */}
+
+          {currentMoveIndex ===
+            -1 && (
+
             <p className="mt-4 text-sm text-[#786d5b]">
-              Make a move to begin writing analysis.
+              Use the right arrow or
+              select a move to begin.
             </p>
+
           )}
 
-          {/* ================================
-              EDITING ANALYSIS
-              ================================= */}
 
-          {currentMoveIndex >= 0 &&
+          {/* ==================================================
+              EDITING
+              ================================================== */}
+
+          {currentMoveIndex >=
+            0 &&
             editingAnalysis && (
-              <div className="mt-4">
 
-                <textarea
-                  autoFocus
-                  value={analysisDraft}
-                  onChange={(event) =>
-                    setAnalysisDraft(
-                      event.target.value
-                    )
+            <div className="mt-4">
+
+              <textarea
+                autoFocus
+                value={analysisDraft}
+                onChange={(event) =>
+                  setAnalysisDraft(
+                    event.target.value
+                  )
+                }
+                onKeyDown={
+                  handleAnalysisKeyDown
+                }
+                placeholder="Write your analysis of this move..."
+                className="min-h-[220px] w-full resize-y rounded-lg border border-[#352819] bg-[#080a09] p-4 font-serif text-sm leading-relaxed text-[#d4c4a6] outline-none placeholder:text-[#5f5649] focus:border-[#80602f]"
+              />
+
+
+              <div className="mt-3 flex gap-2">
+
+                <button
+                  onClick={
+                    handleSaveAnalysis
                   }
-                  onKeyDown={
-                    handleAnalysisKeyDown
+                  className="rounded-lg bg-[#a72c20] px-4 py-2 text-sm text-[#f0d8b0] transition-colors hover:bg-[#c13a2b]"
+                >
+                  Save
+                </button>
+
+                <button
+                  onClick={
+                    handleDeleteAnalysis
                   }
-                  placeholder="Write your analysis of this move..."
-                  className="min-h-[220px] w-full resize-y rounded-lg border border-[#352819] bg-[#080a09] p-4 font-serif text-sm leading-relaxed text-[#d4c4a6] outline-none placeholder:text-[#5f5649] focus:border-[#80602f]"
-                />
-
-                {/* BUTTONS */}
-
-                <div className="mt-3 flex gap-2">
-
-                  <button
-                    onClick={
-                      handleSaveAnalysis
-                    }
-                    className="rounded-lg bg-[#a72c20] px-4 py-2 text-sm text-[#f0d8b0] transition-colors hover:bg-[#c13a2b]"
-                  >
-                    Save
-                  </button>
-
-                  <button
-                    onClick={
-                      handleDeleteAnalysis
-                    }
-                    className="rounded-lg border border-[#49351f] px-4 py-2 text-sm text-[#b73527] transition-colors hover:bg-[#241512]"
-                  >
-                    Delete
-                  </button>
-
-                </div>
+                  className="rounded-lg border border-[#49351f] px-4 py-2 text-sm text-[#b73527] transition-colors hover:bg-[#241512]"
+                >
+                  Delete
+                </button>
 
               </div>
-            )}
 
-          {/* ================================
+            </div>
+
+          )}
+
+
+          {/* ==================================================
               SAVED ANALYSIS
-              ================================= */}
+              ================================================== */}
 
-          {currentMoveIndex >= 0 &&
+          {currentMoveIndex >=
+            0 &&
             !editingAnalysis && (
-              <div className="mt-4">
 
-                <div className="min-h-[220px] rounded-lg border border-[#352819] bg-[#080a09] p-4">
+            <div className="mt-4">
 
-                  {currentAnalysis ? (
-                    <p className="whitespace-pre-wrap font-serif text-sm leading-relaxed text-[#d4c4a6]">
-                      {currentAnalysis}
-                    </p>
-                  ) : (
-                    <p className="font-serif text-sm text-[#5f5649]">
-                      No analysis written yet.
-                    </p>
-                  )}
+              <div className="min-h-[220px] rounded-lg border border-[#352819] bg-[#080a09] p-4">
 
-                </div>
+                {currentAnalysis ? (
 
-                {/* BUTTONS */}
+                  <p className="whitespace-pre-wrap font-serif text-sm leading-relaxed text-[#d4c4a6]">
+                    {currentAnalysis}
+                  </p>
 
-                <div className="mt-3 flex gap-2">
+                ) : (
 
-                  <button
-                    onClick={
-                      handleEditAnalysis
-                    }
-                    className="rounded-lg bg-[#594124] px-4 py-2 text-sm text-[#e1cda9] transition-colors hover:bg-[#70532d]"
-                  >
-                    Edit
-                  </button>
+                  <p className="font-serif text-sm text-[#5f5649]">
+                    No analysis written yet.
+                  </p>
 
-                  <button
-                    onClick={
-                      handleDeleteAnalysis
-                    }
-                    className="rounded-lg border border-[#49351f] px-4 py-2 text-sm text-[#b73527] transition-colors hover:bg-[#241512]"
-                  >
-                    Delete
-                  </button>
-
-                </div>
+                )}
 
               </div>
-            )}
+
+
+              <div className="mt-3 flex gap-2">
+
+                <button
+                  onClick={
+                    handleEditAnalysis
+                  }
+                  className="rounded-lg bg-[#594124] px-4 py-2 text-sm text-[#e1cda9] transition-colors hover:bg-[#70532d]"
+                >
+                  Edit
+                </button>
+
+                <button
+                  onClick={
+                    handleDeleteAnalysis
+                  }
+                  className="rounded-lg border border-[#49351f] px-4 py-2 text-sm text-[#b73527] transition-colors hover:bg-[#241512]"
+                >
+                  Delete
+                </button>
+
+              </div>
+
+            </div>
+
+          )}
 
         </section>
 
