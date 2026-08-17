@@ -1,130 +1,261 @@
 import { useState } from "react";
 import { ArrowLeft, Save } from "lucide-react";
-import { Link, useNavigate } from "react-router-dom";
+import {
+  Link,
+  useNavigate,
+  useParams,
+} from "react-router-dom";
+
 import { Chess } from "chess.js";
-import { useGames } from "../context/GameContext";
+
+import { useGames } from "../hooks/useGames";
+
 
 function AddGame() {
-  
   const navigate = useNavigate();
 
-  const { addGame } = useGames();
+  const { gameId } = useParams();
 
-  const [white, setWhite] = useState("");
-  const [black, setBlack] = useState("");
-  const [event, setEvent] = useState("");
-  const [category, setCategory] = useState("");
-  const [rating, setRating] = useState("");
-  const [pgn, setPgn] = useState("");
+  const {
+    games,
+    addGame,
+    updateGame,
+  } = useGames();
 
-  const [error, setError] = useState("");
 
   /*
    * --------------------------------------------------
-   * SAVE GAME
+   * EDIT MODE
+   * --------------------------------------------------
+   *
+   * If the URL contains a gameId, we're editing
+   * an existing game.
+   *
+   * Example:
+   *
+   * /games/add
+   *
+   * = CREATE
+   *
+   * /games/edit/tal-vs-petrosian-1960
+   *
+   * = EDIT
+   */
+
+  const editingGame =
+    gameId
+      ? games.find(
+          (game) =>
+            game.id === gameId
+        )
+      : undefined;
+
+
+  const isEditing =
+    Boolean(editingGame);
+
+
+  /*
+   * --------------------------------------------------
+   * FORM STATE
+   * --------------------------------------------------
+   */
+
+  const [white, setWhite] =
+    useState(
+      editingGame?.white ?? ""
+    );
+
+  const [black, setBlack] =
+    useState(
+      editingGame?.black ?? ""
+    );
+
+  const [event, setEvent] =
+    useState(
+      editingGame?.event ?? ""
+    );
+
+  const [category, setCategory] =
+    useState(
+      editingGame?.category ?? ""
+    );
+
+  const [rating, setRating] =
+    useState(
+      editingGame?.rating ?? ""
+    );
+
+  const [pgn, setPgn] =
+    useState(
+      editingGame?.pgn ?? ""
+    );
+
+  const [error, setError] =
+    useState("");
+
+
+  /*
+   * --------------------------------------------------
+   * SUBMIT
    * --------------------------------------------------
    */
 
   const handleSubmit = (
-  formEvent: React.FormEvent<HTMLFormElement>
-) => {
+    formEvent: React.FormEvent<HTMLFormElement>
+  ) => {
 
-  formEvent.preventDefault();
+    formEvent.preventDefault();
 
-  setError("");
+    setError("");
+
+
+    /*
+     * REQUIRED FIELDS
+     */
+
+    if (
+      !white.trim() ||
+      !black.trim() ||
+      !event.trim() ||
+      !category.trim() ||
+      !rating.trim() ||
+      !pgn.trim()
+    ) {
+
+      setError(
+        "Every field is required."
+      );
+
+      return;
+    }
+
+
+    /*
+     * VALIDATE PGN
+     */
+
+    try {
+
+      const chess =
+        new Chess();
+
+      chess.loadPgn(
+        pgn.trim()
+      );
+
+    } catch (error) {
+
+      console.error(
+        "Invalid PGN:",
+        error
+      );
+
+      setError(
+        "The PGN could not be read. Check that the moves are valid."
+      );
+
+      return;
+    }
+
+
+    /*
+     * COMMON GAME DATA
+     */
+
+    const gameData = {
+      players:
+        `${white.trim()} vs ${black.trim()}`,
+
+      white:
+        white.trim(),
+
+      black:
+        black.trim(),
+
+      event:
+        event.trim(),
+
+      category:
+        category.trim(),
+
+      rating:
+        rating.trim(),
+
+      pgn:
+        pgn.trim(),
+    };
+
+
+    /*
+     * EDIT EXISTING GAME
+     */
+
+    if (
+      isEditing &&
+      editingGame
+    ) {
+
+      updateGame(
+        editingGame.id,
+        gameData
+      );
+
+      navigate(
+        `/games/${editingGame.id}`
+      );
+
+      return;
+    }
+
+
+    /*
+     * CREATE NEW GAME
+     */
+
+    addGame(
+      gameData
+    );
+
+    navigate(
+      "/games"
+    );
+  };
 
 
   /*
    * --------------------------------------------------
-   * REQUIRED FIELDS
+   * GAME NOT FOUND
    * --------------------------------------------------
    */
 
   if (
-    !white.trim() ||
-    !black.trim() ||
-    !event.trim() ||
-    !category.trim() ||
-    !rating.trim() ||
-    !pgn.trim()
+    gameId &&
+    !editingGame
   ) {
 
-    setError(
-      "Every field is required."
-    );
+    return (
+      <div className="min-h-screen bg-[#080a09] p-10">
 
-    return;
+        <h1 className="font-serif text-3xl text-[#d4c4a6]">
+          Game not found
+        </h1>
+
+        <p className="mt-3 text-sm text-[#786d5b]">
+          The game you're trying to edit doesn't exist.
+        </p>
+
+        <Link
+          to="/games"
+          className="mt-6 inline-flex items-center gap-2 rounded-lg border border-[#49351f] px-5 py-3 font-serif text-sm text-[#cdbd9f] hover:bg-[#17130f]"
+        >
+          <ArrowLeft size={16} />
+          Back to Library
+        </Link>
+
+      </div>
+    );
   }
-
-
-  /*
-   * --------------------------------------------------
-   * VALIDATE PGN
-   * --------------------------------------------------
-   */
-
-  try {
-
-    const chess =
-      new Chess();
-
-    chess.loadPgn(
-      pgn.trim()
-    );
-
-  } catch (error) {
-
-    console.error(
-      "Invalid PGN:",
-      error
-    );
-
-    setError(
-      "The PGN could not be read. Check that the moves are valid."
-    );
-
-    return;
-  }
-
-
-  /*
-   * --------------------------------------------------
-   * CREATE GAME
-   * --------------------------------------------------
-   */
-
-  addGame({
-    players:
-      `${white.trim()} vs ${black.trim()}`,
-
-    white:
-      white.trim(),
-
-    black:
-      black.trim(),
-
-    event:
-      event.trim(),
-
-    category:
-      category.trim(),
-
-    rating:
-      rating.trim(),
-
-    pgn:
-      pgn.trim(),
-  });
-
-
-  /*
-   * --------------------------------------------------
-   * RETURN TO LIBRARY
-   * --------------------------------------------------
-   */
-
-  navigate("/games");
-};
 
 
   /*
@@ -136,253 +267,183 @@ function AddGame() {
   return (
     <div className="min-h-screen bg-[#080a09] px-10 py-12">
 
-      {/* ==================================================
-          BACK
-          ================================================== */}
+      {/* HEADER */}
 
-      <Link
-        to="/games"
-        className="inline-flex items-center gap-2 font-serif text-sm text-[#806c4e] transition-colors hover:text-[#d4c4a6]"
-      >
-        <ArrowLeft size={16} />
+      <header className="border-b border-[#2b2117] pb-8">
 
-        Back to library
-      </Link>
+        <Link
+          to={
+            isEditing
+              ? `/games/${editingGame?.id}`
+              : "/games"
+          }
+          className="inline-flex items-center gap-2 font-serif text-sm text-[#806c4e] transition-colors hover:text-[#d4c4a6]"
+        >
+          <ArrowLeft size={16} />
+
+          {isEditing
+            ? "Back to Game"
+            : "Back to Library"}
+
+        </Link>
 
 
-      {/* ==================================================
-          HEADER
-          ================================================== */}
-
-      <header className="mt-8 border-b border-[#2b2117] pb-8">
-
-        <p className="font-serif text-xs tracking-[0.25em] text-[#806c4e]">
-          LIBRARY
+        <p className="mt-8 font-serif text-xs tracking-[0.25em] text-[#806c4e]">
+          {isEditing
+            ? "EDIT GAME"
+            : "CONTRIBUTE TO THE ARCHIVE"}
         </p>
 
+
         <h1 className="mt-3 font-serif text-5xl text-[#d9c8aa]">
-          Add Game
+          {isEditing
+            ? "Edit Game"
+            : "Add Game"}
         </h1>
 
+
         <p className="mt-4 max-w-2xl font-serif text-base leading-relaxed text-[#8e806b]">
-          Add a game to the Ryabina archive
-          and give it a place in the library.
+
+          {isEditing
+            ? "Correct the details, update the PGN, or refine the classification of this game."
+            : "Add a game to the Ryabina's Gambit archive and make it available for analysis."}
+
         </p>
 
       </header>
 
 
-      {/* ==================================================
-          FORM
-          ================================================== */}
+      {/* FORM */}
 
       <form
         onSubmit={handleSubmit}
         className="mt-10 max-w-4xl"
       >
 
-        {/* ==================================================
-            PLAYERS
-            ================================================== */}
+        <div className="grid grid-cols-2 gap-6">
 
-        <section className="rounded-xl border border-[#352819] bg-[#0c0e0d] p-6">
+          {/* WHITE */}
 
-          <h2 className="font-serif text-xl text-[#d4c4a6]">
-            Players
-          </h2>
-
-          <div className="mt-6 grid grid-cols-2 gap-5">
-
-            {/* WHITE */}
-
-            <div>
-
-              <label className="font-serif text-xs tracking-[0.15em] text-[#786d5b]">
-                WHITE
-              </label>
-
-              <input
-                value={white}
-                onChange={(event) =>
-                  setWhite(event.target.value)
-                }
-                placeholder="Mikhail Tal"
-                className="mt-2 w-full rounded-lg border border-[#49351f] bg-[#080a09] px-4 py-3 font-serif text-sm text-[#d4c4a6] outline-none placeholder:text-[#5f5649] focus:border-[#80602f]"
-              />
-
-            </div>
+          <FormField
+            label="White Player"
+            value={white}
+            onChange={setWhite}
+            placeholder="Mikhail Tal"
+          />
 
 
-            {/* BLACK */}
+          {/* BLACK */}
 
-            <div>
-
-              <label className="font-serif text-xs tracking-[0.15em] text-[#786d5b]">
-                BLACK
-              </label>
-
-              <input
-                value={black}
-                onChange={(event) =>
-                  setBlack(event.target.value)
-                }
-                placeholder="Tigran Petrosian"
-                className="mt-2 w-full rounded-lg border border-[#49351f] bg-[#080a09] px-4 py-3 font-serif text-sm text-[#d4c4a6] outline-none placeholder:text-[#5f5649] focus:border-[#80602f]"
-              />
-
-            </div>
-
-          </div>
-
-        </section>
+          <FormField
+            label="Black Player"
+            value={black}
+            onChange={setBlack}
+            placeholder="Tigran Petrosian"
+          />
 
 
-        {/* ==================================================
-            GAME INFORMATION
-            ================================================== */}
+          {/* EVENT */}
 
-        <section className="mt-5 rounded-xl border border-[#352819] bg-[#0c0e0d] p-6">
-
-          <h2 className="font-serif text-xl text-[#d4c4a6]">
-            Game Information
-          </h2>
-
-          <div className="mt-6 grid grid-cols-2 gap-5">
-
-            {/* EVENT */}
-
-            <div>
-
-              <label className="font-serif text-xs tracking-[0.15em] text-[#786d5b]">
-                EVENT
-              </label>
-
-              <input
-                value={event}
-                onChange={(event) =>
-                  setEvent(event.target.value)
-                }
-                placeholder="Candidates Tournament"
-                className="mt-2 w-full rounded-lg border border-[#49351f] bg-[#080a09] px-4 py-3 font-serif text-sm text-[#d4c4a6] outline-none placeholder:text-[#5f5649] focus:border-[#80602f]"
-              />
-
-            </div>
+          <FormField
+            label="Event"
+            value={event}
+            onChange={setEvent}
+            placeholder="Candidates Tournament"
+          />
 
 
-            {/* CATEGORY */}
+          {/* CATEGORY */}
 
-            <div>
-
-              <label className="font-serif text-xs tracking-[0.15em] text-[#786d5b]">
-                CATEGORY
-              </label>
-
-              <input
-                value={category}
-                onChange={(event) =>
-                  setCategory(event.target.value)
-                }
-                placeholder="Brilliant Attack"
-                className="mt-2 w-full rounded-lg border border-[#49351f] bg-[#080a09] px-4 py-3 font-serif text-sm text-[#d4c4a6] outline-none placeholder:text-[#5f5649] focus:border-[#80602f]"
-              />
-
-            </div>
+          <FormField
+            label="Category"
+            value={category}
+            onChange={setCategory}
+            placeholder="Brilliant Attack"
+          />
 
 
-            {/* RATING */}
+          {/* RATING */}
 
-            <div>
+          <FormField
+            label="Rating"
+            value={rating}
+            onChange={setRating}
+            placeholder="4.9"
+          />
 
-              <label className="font-serif text-xs tracking-[0.15em] text-[#786d5b]">
-                RATING
-              </label>
-
-              <input
-                value={rating}
-                onChange={(event) =>
-                  setRating(event.target.value)
-                }
-                placeholder="4.9"
-                className="mt-2 w-full rounded-lg border border-[#49351f] bg-[#080a09] px-4 py-3 font-serif text-sm text-[#d4c4a6] outline-none placeholder:text-[#5f5649] focus:border-[#80602f]"
-              />
-
-            </div>
-
-          </div>
-
-        </section>
+        </div>
 
 
-        {/* ==================================================
+        {/* PGN */}
+
+        <div className="mt-6">
+
+          <label className="font-serif text-sm text-[#cdbd9f]">
             PGN
-            ================================================== */}
+          </label>
 
-        <section className="mt-5 rounded-xl border border-[#352819] bg-[#0c0e0d] p-6">
-
-          <h2 className="font-serif text-xl text-[#d4c4a6]">
-            PGN
-          </h2>
-
-          <p className="mt-2 font-serif text-sm text-[#786d5b]">
-            Paste the PGN of the game below.
+          <p className="mt-1 text-xs text-[#786d5b]">
+            Paste the complete PGN of the game here.
           </p>
+
 
           <textarea
             value={pgn}
             onChange={(event) =>
-              setPgn(event.target.value)
+              setPgn(
+                event.target.value
+              )
             }
-            placeholder={`[Event "Example"]
+            placeholder={`[Event "Candidates Tournament"]
 
-1. e4 e5 2. Nf3 Nc6 3. Bb5 a6`}
-            className="mt-5 min-h-[300px] w-full resize-y rounded-lg border border-[#49351f] bg-[#080a09] p-4 font-mono text-sm leading-relaxed text-[#d4c4a6] outline-none placeholder:text-[#4f473b] focus:border-[#80602f]"
+1. e4 c6 2. d4 d5 3. Nc3 dxe4`}
+            className="mt-3 min-h-[280px] w-full resize-y rounded-xl border border-[#352819] bg-[#080a09] p-5 font-mono text-sm leading-relaxed text-[#d4c4a6] outline-none placeholder:text-[#51493e] focus:border-[#80602f]"
           />
 
-        </section>
+        </div>
 
 
-        {/* ==================================================
-            ERROR
-            ================================================== */}
+        {/* ERROR */}
 
         {error && (
 
-          <div className="mt-5 rounded-lg border border-[#6e2920] bg-[#24110e] px-4 py-3">
+          <div className="mt-5 rounded-lg border border-[#633025] bg-[#21100d] px-4 py-3 text-sm text-[#d75a45]">
 
-            <p className="font-serif text-sm text-[#d75a45]">
-              {error}
-            </p>
+            {error}
 
           </div>
 
         )}
 
 
-        {/* ==================================================
-            ACTIONS
-            ================================================== */}
+        {/* ACTIONS */}
 
-        <div className="mt-6 flex items-center justify-end gap-3">
-
-          <button
-            type="button"
-            onClick={() =>
-              navigate("/games")
-            }
-            className="rounded-lg border border-[#49351f] px-6 py-3 font-serif text-sm text-[#cdbd9f] transition-colors hover:bg-[#17130f]"
-          >
-            Cancel
-          </button>
-
+        <div className="mt-8 flex items-center gap-3">
 
           <button
             type="submit"
             className="flex items-center gap-2 rounded-lg bg-[#a72c20] px-6 py-3 font-serif text-sm text-[#f0d8b0] transition-colors hover:bg-[#c13a2b]"
           >
-            <Save size={16} />
 
-            Save Game
+            <Save size={17} />
+
+            {isEditing
+              ? "Save Changes"
+              : "Save Game"}
+
           </button>
+
+
+          <Link
+            to={
+              isEditing
+                ? `/games/${editingGame?.id}`
+                : "/games"
+            }
+            className="rounded-lg border border-[#49351f] px-6 py-3 font-serif text-sm text-[#cdbd9f] transition-colors hover:bg-[#17130f]"
+          >
+            Cancel
+          </Link>
 
         </div>
 
@@ -391,5 +452,52 @@ function AddGame() {
     </div>
   );
 }
+
+
+/*
+ * --------------------------------------------------
+ * REUSABLE FORM FIELD
+ * --------------------------------------------------
+ */
+
+type FormFieldProps = {
+  label: string;
+  value: string;
+  onChange: (
+    value: string
+  ) => void;
+  placeholder: string;
+};
+
+
+function FormField({
+  label,
+  value,
+  onChange,
+  placeholder,
+}: FormFieldProps) {
+
+  return (
+    <div>
+
+      <label className="font-serif text-sm text-[#cdbd9f]">
+        {label}
+      </label>
+
+      <input
+        value={value}
+        onChange={(event) =>
+          onChange(
+            event.target.value
+          )
+        }
+        placeholder={placeholder}
+        className="mt-2 w-full rounded-lg border border-[#352819] bg-[#080a09] px-4 py-3 font-serif text-sm text-[#d4c4a6] outline-none placeholder:text-[#51493e] focus:border-[#80602f]"
+      />
+
+    </div>
+  );
+}
+
 
 export default AddGame;

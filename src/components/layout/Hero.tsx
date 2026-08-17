@@ -26,11 +26,11 @@ function Hero() {
           TOP BAR
           ================================================== */}
 
-      <div className="relative z-10 flex items-center justify-between px-10 py-8">
+        <div className="relative z-10 flex flex-wrap items-center justify-between gap-4 px-6 py-8 md:px-10">
 
         {/* SEARCH */}
 
-        <div className="flex w-[370px] items-center gap-3 rounded-xl border border-[#3a2b1b] bg-[#0b0d0c]/80 px-4 py-3">
+        <div className="flex w-full max-w-[370px] items-center gap-3 rounded-xl border border-[#3a2b1b] bg-[#0b0d0c]/80 px-4 py-3">
 
           <Search
             size={17}
@@ -50,12 +50,6 @@ function Hero() {
 
         <div className="flex items-center gap-3">
 
-          <button
-            type="button"
-            className="flex h-11 w-11 items-center justify-center rounded-full border border-[#3a2b1b] text-[#a78b5a] transition-colors hover:bg-[#17130f]"
-          >
-            §
-          </button>
 
           <button
             type="button"
@@ -80,8 +74,7 @@ function Hero() {
           HERO CONTENT
           ================================================== */}
 
-      <div className="relative z-10 grid grid-cols-[1fr_1.2fr] gap-10 px-12 pt-10">
-
+        <div className="relative z-10 grid grid-cols-1 gap-10 px-6 pt-10 md:grid-cols-[1fr_1.2fr] md:px-12">
         {/* TEXT */}
 
         <div className="max-w-xl pt-10">

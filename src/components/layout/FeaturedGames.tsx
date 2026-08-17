@@ -1,6 +1,6 @@
 import { useNavigate } from "react-router-dom";
 import GameCard from "./GameCard";
-import { useGames } from "../../context/GameContext";
+import { useGames } from "../../hooks/useGames";
 
 function FeaturedGames() {
   const navigate = useNavigate();

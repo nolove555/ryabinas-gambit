@@ -12,7 +12,7 @@ import { players } from "../../data/players";
 
 function Sidebar() {
   return (
-    <aside className="fixed left-0 top-0 z-50 h-screen w-80 border-r border-[#3a2a18] bg-[#080a09] text-[#d8c7a5]">
+     <aside className="fixed left-0 top-0 z-50 hidden h-screen w-80 border-r border-[#3a2a18] bg-[#080a09] text-[#d8c7a5] md:block">
 
       <div className="flex h-full flex-col px-6 py-8">
 

@@ -1,177 +1,236 @@
-import {
-  createContext,
-  useContext,
-  useEffect,
-  useState,
-} from "react";
+// src/context/GameContext.tsx — full replace
+import { createContext, useEffect, useState } from "react";
 
-import type { GameData } from "../data/games";
+import type { GameData, Variation, VariationMove } from "../data/games";
 import { games as initialGames } from "../data/games";
 
 
 type GameContextType = {
   games: GameData[];
-
-  addGame: (
-    game: Omit<GameData, "id">
+  addGame: (game: Omit<GameData, "id">) => void;
+  updateGame: (id: string, updatedGame: Omit<GameData, "id">) => void;
+  deleteGame: (id: string) => void;
+  saveAnalysis: (gameId: string, moveIndex: number, text: string) => void;
+  deleteAnalysis: (gameId: string, moveIndex: number) => void;
+  addVariation: (gameId: string, branchFromMoveIndex: number) => void;
+  deleteVariation: (gameId: string, variationId: string) => void;
+  addVariationMove: (
+    gameId: string,
+    variationId: string,
+    move: VariationMove
   ) => void;
-
-  updateGame: (
-    id: string,
-    updatedGame: Omit<GameData, "id">
+  deleteVariationMovesAfter: (
+    gameId: string,
+    variationId: string,
+    moveIndex: number
   ) => void;
-
-  deleteGame: (
-    id: string
+  saveVariationAnalysis: (
+    gameId: string,
+    variationId: string,
+    moveIndex: number,
+    text: string
+  ) => void;
+  deleteVariationAnalysis: (
+    gameId: string,
+    variationId: string,
+    moveIndex: number
   ) => void;
 };
+// eslint-disable-next-line react-refresh/only-export-components
+export const GameContext = createContext<GameContextType | undefined>(
+  undefined
+);
 
-
-const GameContext =
-  createContext<GameContextType | undefined>(
-    undefined
-  );
-
-
-function GameProvider({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
-
-  /*
-   * --------------------------------------------------
-   * LOAD GAMES
-   * --------------------------------------------------
-   *
-   * First try localStorage.
-   *
-   * If nothing exists yet, use the games
-   * from games.ts.
-   */
-
-  const [games, setGames] =
-    useState<GameData[]>(() => {
-
-      try {
-        const savedGames =
-          localStorage.getItem(
-            "ryabina-games"
-          );
-
-        if (savedGames) {
-          return JSON.parse(
-            savedGames
-          ) as GameData[];
-        }
-      } catch (error) {
-        console.error(
-          "Failed to load saved games:",
-          error
-        );
+function GameProvider({ children }: { children: React.ReactNode }) {
+  const [games, setGames] = useState<GameData[]>(() => {
+    try {
+      const savedGames = localStorage.getItem("ryabina-games");
+      if (savedGames) {
+        return JSON.parse(savedGames) as GameData[];
       }
-
-      return initialGames;
-    });
-
-
-  /*
-   * --------------------------------------------------
-   * SAVE GAMES
-   * --------------------------------------------------
-   *
-   * Every time games changes, update
-   * localStorage.
-   */
+    } catch (error) {
+      console.error("Failed to load saved games:", error);
+    }
+    return initialGames;
+  });
 
   useEffect(() => {
-
     try {
-      localStorage.setItem(
-        "ryabina-games",
-        JSON.stringify(games)
-      );
+      localStorage.setItem("ryabina-games", JSON.stringify(games));
     } catch (error) {
-      console.error(
-        "Failed to save games:",
-        error
-      );
+      console.error("Failed to save games:", error);
     }
-
   }, [games]);
 
+  const addGame = (game: Omit<GameData, "id">) => {
+    const id = `${game.white}-vs-${game.black}-${Date.now()}`
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-|-$/g, "");
 
-  /*
-   * --------------------------------------------------
-   * ADD GAME
-   * --------------------------------------------------
-   */
+    const newGame: GameData = { id, ...game };
 
-  const addGame = (
-    game: Omit<GameData, "id">
-  ) => {
-
-    const id =
-      `${game.white}-vs-${game.black}-${Date.now()}`
-        .toLowerCase()
-        .replace(/[^a-z0-9]+/g, "-")
-        .replace(/^-|-$/g, "");
-
-
-    const newGame: GameData = {
-      id,
-      ...game,
-    };
-
-
-    setGames((previousGames) => [
-      ...previousGames,
-      newGame,
-    ]);
+    setGames((previousGames) => [...previousGames, newGame]);
   };
 
-
-  /*
-   * --------------------------------------------------
-   * UPDATE GAME
-   * --------------------------------------------------
-   */
-
-  const updateGame = (
-    id: string,
-    updatedGame: Omit<GameData, "id">
-  ) => {
-
+  const updateGame = (id: string, updatedGame: Omit<GameData, "id">) => {
     setGames((previousGames) =>
       previousGames.map((game) =>
-        game.id === id
-          ? {
-              id,
-              ...updatedGame,
-            }
-          : game
+        game.id === id ? { id, ...updatedGame } : game
       )
     );
   };
 
+  const deleteGame = (id: string) => {
+    setGames((previousGames) =>
+      previousGames.filter((game) => game.id !== id)
+    );
+  };
 
-  /*
-   * --------------------------------------------------
-   * DELETE GAME
-   * --------------------------------------------------
-   */
-
-  const deleteGame = (
-    id: string
+  const saveAnalysis = (
+    gameId: string,
+    moveIndex: number,
+    text: string
   ) => {
+    setGames((previousGames) =>
+      previousGames.map((game) => {
+        if (game.id !== gameId) return game;
+        return {
+          ...game,
+          analysis: { ...(game.analysis ?? {}), [moveIndex]: text },
+        };
+      })
+    );
+  };
+
+  const deleteAnalysis = (gameId: string, moveIndex: number) => {
+    setGames((previousGames) =>
+      previousGames.map((game) => {
+        if (game.id !== gameId) return game;
+        const updatedAnalysis = { ...(game.analysis ?? {}) };
+        delete updatedAnalysis[moveIndex];
+        return { ...game, analysis: updatedAnalysis };
+      })
+    );
+  };
+
+  const addVariation = (gameId: string, branchFromMoveIndex: number) => {
+    const variation: Variation = {
+      id: crypto.randomUUID(),
+      branchFromMoveIndex,
+      moves: [],
+      analysis: {},
+    };
 
     setGames((previousGames) =>
-      previousGames.filter(
-        (game) => game.id !== id
-      )
+      previousGames.map((game) => {
+        if (game.id !== gameId) return game;
+        return {
+          ...game,
+          variations: [...(game.variations ?? []), variation],
+        };
+      })
     );
   };
 
+  const deleteVariation = (gameId: string, variationId: string) => {
+    setGames((previousGames) =>
+      previousGames.map((game) => {
+        if (game.id !== gameId) return game;
+        return {
+          ...game,
+          variations: (game.variations ?? []).filter(
+            (variation) => variation.id !== variationId
+          ),
+        };
+      })
+    );
+  };
+
+  const addVariationMove = (
+    gameId: string,
+    variationId: string,
+    move: VariationMove
+  ) => {
+    setGames((previousGames) =>
+      previousGames.map((game) => {
+        if (game.id !== gameId) return game;
+        return {
+          ...game,
+          variations: (game.variations ?? []).map((variation) => {
+            if (variation.id !== variationId) return variation;
+            return { ...variation, moves: [...variation.moves, move] };
+          }),
+        };
+      })
+    );
+  };
+
+  const deleteVariationMovesAfter = (
+    gameId: string,
+    variationId: string,
+    moveIndex: number
+  ) => {
+    setGames((previousGames) =>
+      previousGames.map((game) => {
+        if (game.id !== gameId) return game;
+        return {
+          ...game,
+          variations: (game.variations ?? []).map((variation) => {
+            if (variation.id !== variationId) return variation;
+            return {
+              ...variation,
+              moves: variation.moves.slice(0, moveIndex + 1),
+            };
+          }),
+        };
+      })
+    );
+  };
+
+  const saveVariationAnalysis = (
+    gameId: string,
+    variationId: string,
+    moveIndex: number,
+    text: string
+  ) => {
+    setGames((previousGames) =>
+      previousGames.map((game) => {
+        if (game.id !== gameId) return game;
+        return {
+          ...game,
+          variations: (game.variations ?? []).map((variation) => {
+            if (variation.id !== variationId) return variation;
+            return {
+              ...variation,
+              analysis: { ...(variation.analysis ?? {}), [moveIndex]: text },
+            };
+          }),
+        };
+      })
+    );
+  };
+
+  const deleteVariationAnalysis = (
+    gameId: string,
+    variationId: string,
+    moveIndex: number
+  ) => {
+    setGames((previousGames) =>
+      previousGames.map((game) => {
+        if (game.id !== gameId) return game;
+        return {
+          ...game,
+          variations: (game.variations ?? []).map((variation) => {
+            if (variation.id !== variationId) return variation;
+            const updatedAnalysis = { ...(variation.analysis ?? {}) };
+            delete updatedAnalysis[moveIndex];
+            return { ...variation, analysis: updatedAnalysis };
+          }),
+        };
+      })
+    );
+  };
 
   return (
     <GameContext.Provider
@@ -180,33 +239,19 @@ function GameProvider({
         addGame,
         updateGame,
         deleteGame,
+        saveAnalysis,
+        deleteAnalysis,
+        addVariation,
+        deleteVariation,
+        addVariationMove,
+        deleteVariationMovesAfter,
+        saveVariationAnalysis,
+        deleteVariationAnalysis,
       }}
     >
       {children}
     </GameContext.Provider>
   );
 }
-
-
-/*
- * --------------------------------------------------
- * CUSTOM HOOK
- * --------------------------------------------------
- */
-
-export function useGames() {
-
-  const context =
-    useContext(GameContext);
-
-  if (!context) {
-    throw new Error(
-      "useGames must be used inside GameProvider"
-    );
-  }
-
-  return context;
-}
-
 
 export default GameProvider;
