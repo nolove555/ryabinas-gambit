@@ -1,241 +1,212 @@
 // src/context/GameContext.tsx — full replace
 import { createContext, useEffect, useState } from "react";
+import type { GameData, VariationMove } from "../data/games";
 
-import type { GameData, Variation, VariationMove } from "../data/games";
-import { games as initialGames } from "../data/games";
-
+const API_URL = "http://localhost:4000";
 
 type GameContextType = {
   games: GameData[];
-  addGame: (game: Omit<GameData, "id">) => void;
-  updateGame: (id: string, updatedGame: Omit<GameData, "id">) => void;
-  deleteGame: (id: string) => void;
-  saveAnalysis: (gameId: string, moveIndex: number, text: string) => void;
-  deleteAnalysis: (gameId: string, moveIndex: number) => void;
-  addVariation: (gameId: string, branchFromMoveIndex: number) => void;
-  deleteVariation: (gameId: string, variationId: string) => void;
-  addVariationMove: (
-    gameId: string,
-    variationId: string,
-    move: VariationMove
-  ) => void;
-  deleteVariationMovesAfter: (
-    gameId: string,
-    variationId: string,
-    moveIndex: number
-  ) => void;
-  saveVariationAnalysis: (
-    gameId: string,
-    variationId: string,
-    moveIndex: number,
-    text: string
-  ) => void;
-  deleteVariationAnalysis: (
-    gameId: string,
-    variationId: string,
-    moveIndex: number
-  ) => void;
+  loading: boolean;
+  refetch: () => Promise<void>;
+  addGame: (game: Omit<GameData, "id">) => Promise<void>;
+  updateGame: (id: string, updatedGame: Omit<GameData, "id">) => Promise<void>;
+  deleteGame: (id: string) => Promise<void>;
+  saveAnalysis: (gameId: string, moveIndex: number, text: string) => Promise<void>;
+  deleteAnalysis: (gameId: string, moveIndex: number) => Promise<void>;
+  addVariation: (gameId: string, branchFromMoveIndex: number) => Promise<void>;
+  deleteVariation: (gameId: string, variationId: string) => Promise<void>;
+  addVariationMove: (gameId: string, variationId: string, move: VariationMove) => Promise<void>;
+  deleteVariationMovesAfter: (gameId: string, variationId: string, moveIndex: number) => Promise<void>;
+  saveVariationAnalysis: (gameId: string, variationId: string, moveIndex: number, text: string) => Promise<void>;
+  deleteVariationAnalysis: (gameId: string, variationId: string, moveIndex: number) => Promise<void>;
 };
-// eslint-disable-next-line react-refresh/only-export-components
-export const GameContext = createContext<GameContextType | undefined>(
-  undefined
-);
 
-function GameProvider({ children }: { children: React.ReactNode }) {
-  const [games, setGames] = useState<GameData[]>(() => {
-    try {
-      const savedGames = localStorage.getItem("ryabina-games");
-      if (savedGames) {
-        return JSON.parse(savedGames) as GameData[];
-      }
-    } catch (error) {
-      console.error("Failed to load saved games:", error);
-    }
-    return initialGames;
+// eslint-disable-next-line react-refresh/only-export-components
+export const GameContext = createContext<GameContextType | undefined>(undefined);
+type RawAnalysis = { moveIndex: number; text: string };
+type RawVariationMove = { moveIndex: number; san: string; fen: string };
+type RawVariation = {
+  id: string;
+  branchFromMoveIndex: number;
+  moves: RawVariationMove[];
+  analysis: RawAnalysis[];
+};
+type RawGame = {
+  id: string;
+  white: string;
+  black: string;
+  event: string;
+  category: string;
+  rating: string;
+  pgn: string;
+  analysis: RawAnalysis[];
+  variations: RawVariation[];
+};
+function normalizeGame(raw: RawGame): GameData {
+  const analysis: Record<number, string> = {};
+   (raw.analysis ?? []).forEach((a: RawAnalysis) => {
+    analysis[a.moveIndex] = a.text;
   });
 
-  useEffect(() => {
+  const variations = (raw.variations ?? []).map((v: RawVariation) => {
+    const vAnalysis: Record<number, string> = {};
+    (v.analysis ?? []).forEach((a: RawAnalysis) => {
+      vAnalysis[a.moveIndex] = a.text;
+    });
+
+    return {
+      id: v.id,
+      branchFromMoveIndex: v.branchFromMoveIndex,
+      moves: (v.moves ?? [])
+        .sort((a: RawVariationMove, b: RawVariationMove) => a.moveIndex - b.moveIndex)
+        .map((m: RawVariationMove) => ({ san: m.san, fen: m.fen })),
+      analysis: vAnalysis,
+    };
+  });
+
+  return {
+    id: raw.id,
+    players: `${raw.white} vs ${raw.black}`,
+    white: raw.white,
+    black: raw.black,
+    event: raw.event,
+    category: raw.category,
+    rating: raw.rating,
+    pgn: raw.pgn,
+    analysis,
+    variations,
+  };
+}
+
+function GameProvider({ children }: { children: React.ReactNode }) {
+  const [games, setGames] = useState<GameData[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const refetch = async () => {
+    setLoading(true);
     try {
-      localStorage.setItem("ryabina-games", JSON.stringify(games));
+      const res = await fetch(`${API_URL}/games`);
+      const data = await res.json();
+      setGames(data.map(normalizeGame));
     } catch (error) {
-      console.error("Failed to save games:", error);
+      console.error("Failed to fetch games:", error);
+    } finally {
+      setLoading(false);
     }
-  }, [games]);
-
-  const addGame = (game: Omit<GameData, "id">) => {
-    const id = `${game.white}-vs-${game.black}-${Date.now()}`
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, "-")
-      .replace(/^-|-$/g, "");
-
-    const newGame: GameData = { id, ...game };
-
-    setGames((previousGames) => [...previousGames, newGame]);
   };
 
-  const updateGame = (id: string, updatedGame: Omit<GameData, "id">) => {
-    setGames((previousGames) =>
-      previousGames.map((game) =>
-        game.id === id ? { id, ...updatedGame } : game
-      )
-    );
-  };
+  useEffect(() => {
+    let cancelled = false;
 
-  const deleteGame = (id: string) => {
-    setGames((previousGames) =>
-      previousGames.filter((game) => game.id !== id)
-    );
-  };
-
-  const saveAnalysis = (
-    gameId: string,
-    moveIndex: number,
-    text: string
-  ) => {
-    setGames((previousGames) =>
-      previousGames.map((game) => {
-        if (game.id !== gameId) return game;
-        return {
-          ...game,
-          analysis: { ...(game.analysis ?? {}), [moveIndex]: text },
-        };
-      })
-    );
-  };
-
-  const deleteAnalysis = (gameId: string, moveIndex: number) => {
-    setGames((previousGames) =>
-      previousGames.map((game) => {
-        if (game.id !== gameId) return game;
-        const updatedAnalysis = { ...(game.analysis ?? {}) };
-        delete updatedAnalysis[moveIndex];
-        return { ...game, analysis: updatedAnalysis };
-      })
-    );
-  };
-
-  const addVariation = (gameId: string, branchFromMoveIndex: number) => {
-    const variation: Variation = {
-      id: crypto.randomUUID(),
-      branchFromMoveIndex,
-      moves: [],
-      analysis: {},
+    const load = async () => {
+      setLoading(true);
+      try {
+        const res = await fetch(`${API_URL}/games`);
+        const data = await res.json();
+        if (!cancelled) setGames(data.map(normalizeGame));
+      } catch (error) {
+        console.error("Failed to fetch games:", error);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
     };
 
-    setGames((previousGames) =>
-      previousGames.map((game) => {
-        if (game.id !== gameId) return game;
-        return {
-          ...game,
-          variations: [...(game.variations ?? []), variation],
-        };
-      })
-    );
+    load();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const addGame = async (game: Omit<GameData, "id">) => {
+    await fetch(`${API_URL}/games`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(game),
+    });
+    await refetch();
   };
 
-  const deleteVariation = (gameId: string, variationId: string) => {
-    setGames((previousGames) =>
-      previousGames.map((game) => {
-        if (game.id !== gameId) return game;
-        return {
-          ...game,
-          variations: (game.variations ?? []).filter(
-            (variation) => variation.id !== variationId
-          ),
-        };
-      })
-    );
+  const updateGame = async (id: string, updatedGame: Omit<GameData, "id">) => {
+    await fetch(`${API_URL}/games/${id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(updatedGame),
+    });
+    await refetch();
   };
 
-  const addVariationMove = (
-    gameId: string,
-    variationId: string,
-    move: VariationMove
-  ) => {
-    setGames((previousGames) =>
-      previousGames.map((game) => {
-        if (game.id !== gameId) return game;
-        return {
-          ...game,
-          variations: (game.variations ?? []).map((variation) => {
-            if (variation.id !== variationId) return variation;
-            return { ...variation, moves: [...variation.moves, move] };
-          }),
-        };
-      })
-    );
+  const deleteGame = async (id: string) => {
+    await fetch(`${API_URL}/games/${id}`, { method: "DELETE" });
+    await refetch();
   };
 
-  const deleteVariationMovesAfter = (
-    gameId: string,
-    variationId: string,
-    moveIndex: number
-  ) => {
-    setGames((previousGames) =>
-      previousGames.map((game) => {
-        if (game.id !== gameId) return game;
-        return {
-          ...game,
-          variations: (game.variations ?? []).map((variation) => {
-            if (variation.id !== variationId) return variation;
-            return {
-              ...variation,
-              moves: variation.moves.slice(0, moveIndex + 1),
-            };
-          }),
-        };
-      })
-    );
+  const saveAnalysis = async (gameId: string, moveIndex: number, text: string) => {
+    await fetch(`${API_URL}/games/${gameId}/analysis`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ moveIndex, text }),
+    });
+    await refetch();
   };
 
-  const saveVariationAnalysis = (
-    gameId: string,
-    variationId: string,
-    moveIndex: number,
-    text: string
-  ) => {
-    setGames((previousGames) =>
-      previousGames.map((game) => {
-        if (game.id !== gameId) return game;
-        return {
-          ...game,
-          variations: (game.variations ?? []).map((variation) => {
-            if (variation.id !== variationId) return variation;
-            return {
-              ...variation,
-              analysis: { ...(variation.analysis ?? {}), [moveIndex]: text },
-            };
-          }),
-        };
-      })
-    );
+  const deleteAnalysis = async (gameId: string, moveIndex: number) => {
+    await fetch(`${API_URL}/games/${gameId}/analysis/${moveIndex}`, { method: "DELETE" });
+    await refetch();
   };
 
-  const deleteVariationAnalysis = (
-    gameId: string,
-    variationId: string,
-    moveIndex: number
-  ) => {
-    setGames((previousGames) =>
-      previousGames.map((game) => {
-        if (game.id !== gameId) return game;
-        return {
-          ...game,
-          variations: (game.variations ?? []).map((variation) => {
-            if (variation.id !== variationId) return variation;
-            const updatedAnalysis = { ...(variation.analysis ?? {}) };
-            delete updatedAnalysis[moveIndex];
-            return { ...variation, analysis: updatedAnalysis };
-          }),
-        };
-      })
-    );
+  const addVariation = async (gameId: string, branchFromMoveIndex: number) => {
+    await fetch(`${API_URL}/games/${gameId}/variations`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ branchFromMoveIndex }),
+    });
+    await refetch();
+  };
+
+  const deleteVariation = async (gameId: string, variationId: string) => {
+    await fetch(`${API_URL}/variations/${variationId}`, { method: "DELETE" });
+    await refetch();
+  };
+
+  const addVariationMove = async (gameId: string, variationId: string, move: VariationMove) => {
+    const existingVariation = games
+      .find((g) => g.id === gameId)
+      ?.variations?.find((v) => v.id === variationId);
+    const moveIndex = existingVariation ? existingVariation.moves.length : 0;
+
+    await fetch(`${API_URL}/variations/${variationId}/moves`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ moveIndex, san: move.san, fen: move.fen }),
+    });
+    await refetch();
+  };
+
+  const deleteVariationMovesAfter = async (_gameId: string, variationId: string, moveIndex: number) => {
+    await fetch(`${API_URL}/variations/${variationId}/moves-after/${moveIndex}`, { method: "DELETE" });
+    await refetch();
+  };
+
+  const saveVariationAnalysis = async (_gameId: string, variationId: string, moveIndex: number, text: string) => {
+    await fetch(`${API_URL}/variations/${variationId}/analysis`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ moveIndex, text }),
+    });
+    await refetch();
+  };
+
+  const deleteVariationAnalysis = async (_gameId: string, variationId: string, moveIndex: number) => {
+    await fetch(`${API_URL}/variations/${variationId}/analysis/${moveIndex}`, { method: "DELETE" });
+    await refetch();
   };
 
   return (
     <GameContext.Provider
       value={{
         games,
+        loading,
+        refetch,
         addGame,
         updateGame,
         deleteGame,

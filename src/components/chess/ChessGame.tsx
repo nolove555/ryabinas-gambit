@@ -1,4 +1,4 @@
-// src/components/chess/ChessGame.tsx
+// src/components/chess/ChessGame.tsx — full replace
 import { useEffect, useState } from "react";
 import { Chess } from "chess.js";
 import { Chessboard } from "react-chessboard";
@@ -128,12 +128,20 @@ function ChessGame({ pgn, gameId }: ChessGameProps) {
       if (!move) return false;
 
       if (activeVariationId) {
-        if (variationMoveIndex < activeVariation!.moves.length - 1) {
-          deleteVariationMovesAfter(gameId, activeVariationId, variationMoveIndex);
-        }
+        const runVariationMove = async () => {
+          if (variationMoveIndex < activeVariation!.moves.length - 1) {
+            await deleteVariationMovesAfter(
+              gameId,
+              activeVariationId,
+              variationMoveIndex
+            );
+          }
 
-        const newMove: MoveRecord = { san: move.san, fen: gameCopy.fen() };
-        addVariationMove(gameId, activeVariationId, newMove);
+          const newMove: MoveRecord = { san: move.san, fen: gameCopy.fen() };
+          await addVariationMove(gameId, activeVariationId, newMove);
+        };
+
+        runVariationMove();
 
         const newIndex = variationMoveIndex + 1;
         setVariationMoveIndex(newIndex);
@@ -186,16 +194,21 @@ function ChessGame({ pgn, gameId }: ChessGameProps) {
     setEditingAnalysis(!savedAnalysis);
   };
 
-  const handleSaveAnalysis = () => {
+  const handleSaveAnalysis = async () => {
     if (activeVariationId) {
       if (variationMoveIndex < -1) return;
-      saveVariationAnalysis(gameId, activeVariationId, variationMoveIndex, analysisDraft);
+      await saveVariationAnalysis(
+        gameId,
+        activeVariationId,
+        variationMoveIndex,
+        analysisDraft
+      );
       setEditingAnalysis(false);
       return;
     }
 
     if (currentMoveIndex === -1) return;
-    saveAnalysis(gameId, currentMoveIndex, analysisDraft);
+    await saveAnalysis(gameId, currentMoveIndex, analysisDraft);
     setEditingAnalysis(false);
   };
 
@@ -211,16 +224,16 @@ function ChessGame({ pgn, gameId }: ChessGameProps) {
     setEditingAnalysis(true);
   };
 
-  const handleDeleteAnalysis = () => {
+  const handleDeleteAnalysis = async () => {
     if (activeVariationId) {
-      deleteVariationAnalysis(gameId, activeVariationId, variationMoveIndex);
+      await deleteVariationAnalysis(gameId, activeVariationId, variationMoveIndex);
       setAnalysisDraft("");
       setEditingAnalysis(true);
       return;
     }
 
     if (currentMoveIndex === -1) return;
-    deleteAnalysis(gameId, currentMoveIndex);
+    await deleteAnalysis(gameId, currentMoveIndex);
     setAnalysisDraft("");
     setEditingAnalysis(true);
   };
@@ -309,7 +322,7 @@ function ChessGame({ pgn, gameId }: ChessGameProps) {
       : null;
 
   return (
-    <div className="grid items-start grid-cols-[minmax(0,1fr)_380px] gap-8">
+    <div className="grid grid-cols-1 items-start gap-8 lg:grid-cols-[minmax(0,1fr)_380px]">
       <div className="flex items-start justify-center">
         <div className="aspect-square w-full max-w-[700px]">
           <Chessboard
