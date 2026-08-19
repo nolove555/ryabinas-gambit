@@ -1,7 +1,6 @@
 import {
   Search,
   ArrowRight,
-  PlayCircle,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
@@ -123,16 +122,6 @@ function Hero() {
 
             </button>
 
-
-            <button
-              type="button"
-              className="flex items-center gap-3 rounded-lg border border-[#594124] px-6 py-4 font-serif text-sm text-[#cdbd9f] transition-colors hover:bg-[#17130f]"
-            >
-              How it works
-
-              <PlayCircle size={17} />
-
-            </button>
 
           </div>
 

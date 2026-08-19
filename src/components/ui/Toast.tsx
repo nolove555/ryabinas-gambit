@@ -4,7 +4,7 @@ import { createContext, useCallback, useContext, useState } from "react";
 type Toast = { id: number; message: string };
 type ToastContextType = { showToast: (message: string) => void };
 
-// eslint-disable-next-line react-refresh/only-export-components
+// change to (delete the comment line above ToastContext, keep it above useToast only):
 const ToastContext = createContext<ToastContextType | undefined>(undefined);
 
 export function ToastProvider({ children }: { children: React.ReactNode }) {
